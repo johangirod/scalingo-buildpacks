@@ -8,7 +8,7 @@ i() { sed 's/^/       /'; }
 cd "$1"
 
 # URLs of the Ubuntu packages to install (see main README.md for how to obtain them)
-package_urls=(https://apt.postgresql.org/pub/repos/apt/pool/main/libd/libdbd-pg-perl/libdbd-pg-perl_3.18.0-2.pgdg24.04%2b1_amd64.deb
+package_urls=(https://apt.postgresql.org/pub/repos/apt/pool/main/libd/libdbd-pg-perl/libdbd-pg-perl_3.18.0-4.pgdg24.04%2b1_amd64.deb
 http://archive.ubuntu.com/ubuntu/pool/main/libh/libhtml-tagset-perl/libhtml-tagset-perl_3.20-6_all.deb
 http://archive.ubuntu.com/ubuntu/pool/main/libu/liburi-perl/liburi-perl_5.27-1_all.deb
 http://archive.ubuntu.com/ubuntu/pool/main/libh/libhtml-parser-perl/libhtml-parser-perl_3.81-1build3_amd64.deb
@@ -37,7 +37,8 @@ install_dir=.scalingo-buildpack-postgresql-autodoc
 mkdir -p $install_dir
 for u in "${package_urls[@]}"; do
   echo "  * ${u##*/}" | i
-  curl -s "$u" >pkg.deb && dpkg -x pkg.deb "$install_dir" && rm pkg.deb
+  curl -sf "$u" >pkg.deb || { echo "ERROR: Failed to download ${u##*/}" | i; exit 1; }
+  dpkg -x pkg.deb "$install_dir" && rm pkg.deb
 done
 
 # Create .profile.d script setting PATH, PERL5LIB and POSTGRESQL_AUTODOC_TEMPLATES_PATH
