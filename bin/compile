@@ -7,35 +7,50 @@ i() { sed 's/^/       /'; }
 
 cd "$1"
 
-# URLs of the Ubuntu packages to install (see main README.md for how to obtain them)
-package_urls=(http://archive.ubuntu.com/ubuntu/pool/main/f/fonts-liberation/fonts-liberation_2.1.5-3_all.deb
-http://archive.ubuntu.com/ubuntu/pool/main/f/fonts-liberation-sans-narrow/fonts-liberation-sans-narrow_1.07.6-4_all.deb
-http://archive.ubuntu.com/ubuntu/pool/universe/f/fonts-liberation/fonts-liberation2_2.1.5-3_all.deb
-http://archive.ubuntu.com/ubuntu/pool/universe/a/ann/libann0_1.1.2%2bdoc-9build1_amd64.deb
-http://archive.ubuntu.com/ubuntu/pool/universe/g/graphviz/libcdt5_2.42.2-9ubuntu0.1_amd64.deb
-http://archive.ubuntu.com/ubuntu/pool/universe/g/graphviz/libcgraph6_2.42.2-9ubuntu0.1_amd64.deb
-http://archive.ubuntu.com/ubuntu/pool/universe/g/gts/libgts-0.7-5t64_0.7.6%2bdarcs121130-5.2build1_amd64.deb
-http://archive.ubuntu.com/ubuntu/pool/universe/g/graphviz/libpathplan4_2.42.2-9ubuntu0.1_amd64.deb
-http://archive.ubuntu.com/ubuntu/pool/universe/g/graphviz/libgvc6_2.42.2-9ubuntu0.1_amd64.deb
-http://archive.ubuntu.com/ubuntu/pool/universe/g/graphviz/libgvpr2_2.42.2-9ubuntu0.1_amd64.deb
-http://archive.ubuntu.com/ubuntu/pool/universe/g/graphviz/liblab-gamut1_2.42.2-9ubuntu0.1_amd64.deb
-http://archive.ubuntu.com/ubuntu/pool/main/libx/libxmu/libxmu6_1.1.3-3build2_amd64.deb
-http://archive.ubuntu.com/ubuntu/pool/main/libx/libxaw/libxaw7_1.0.14-1build2_amd64.deb
-http://archive.ubuntu.com/ubuntu/pool/universe/g/graphviz/graphviz_2.42.2-9ubuntu0.1_amd64.deb
-http://archive.ubuntu.com/ubuntu/pool/universe/g/gts/libgts-bin_0.7.6%2bdarcs121130-5.2build1_amd64.deb)
+# Package names to install
+packages=(
+  "fonts-liberation"
+  "fonts-liberation-sans-narrow"
+  "fonts-liberation2"
+  "libann0"
+  "libcdt5"
+  "libcgraph6"
+  "libgts-0.7-5t64"
+  "libpathplan4"
+  "libgvc6"
+  "libgvpr2"
+  "liblab-gamut1"
+  "libxmu6"
+  "libxaw7"
+  "graphviz"
+  "libgts-bin"
+)
 
-graphviz_version="2.42.2"
-
-echo "Will install Graphviz version $graphviz_version" | i
+echo "Will install Graphviz and its dependencies" | i
 
 # Install packages to custom directory in application slug
-echo "Installing Debian packages:" | a
 install_dir=.scalingo-buildpack-graphviz
-mkdir -p $install_dir
-for u in "${package_urls[@]}"; do
-  echo "  * ${u##*/}" | i
-  curl -s "$u" >pkg.deb && dpkg -x pkg.deb "$install_dir" && rm pkg.deb
+mkdir -p "$install_dir"
+
+# Create a temporary directory for package downloads
+download_dir=$(mktemp -d)
+
+# Download packages
+echo "Downloading Debian packages:" | a
+for pkg in "${packages[@]}"; do
+  echo "  * $pkg" | i
+  (cd "$download_dir" && apt-get download "$pkg")
 done
+
+# Extract packages
+echo "Installing Debian packages:" | a
+for deb in "$download_dir"/*.deb; do
+  echo "  * $(basename "$deb")" | i
+  dpkg -x "$deb" "$install_dir"
+done
+
+# Clean up temporary directory
+rm -rf "$download_dir"
 
 # Location of shared libraries
 libs_dir=$install_dir/usr/lib/x86_64-linux-gnu
@@ -48,6 +63,6 @@ echo "export LD_LIBRARY_PATH=/app/$libs_dir:\$LD_LIBRARY_PATH" >>.profile.d/grap
 # Run dot -c to configure plugins (creates config6a file)
 LD_LIBRARY_PATH=$libs_dir "$install_dir"/usr/bin/dot -c
 
-echo "Successfully installed Graphviz $graphviz_version" | a
+echo "Successfully installed Graphviz" | a
 echo "The binaries are in /app/$install_dir/usr/bin" | i
 echo
